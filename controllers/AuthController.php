@@ -162,4 +162,38 @@ class AuthController extends BaseController {
         }
     }
 
+    // ini untuk self auth di web lain kalau mau akses API ini, cukup masukan password dan dicocokan dengan tb_karyawan. karena di web itu nanti akan kirim username jadi kita tinggal cocokan password untuk mendapatkan token akses
+    public function selfAuth() {
+        $data = $this->getRequestData();
+        
+        $validation = $this->validateRequired($data, ['password']);
+        if ($validation) return $validation;
+        
+        try {
+            $karyawan = Karyawan::where('password', $data['password'])->first();
+            
+            if (!$karyawan) {
+                return $this->unauthorized('Invalid password');
+            }
+            
+            $token = $this->jwt->generateToken([
+                'id' => $karyawan->id,
+                'namaKaryawan' => $karyawan->namaKaryawan,
+                'exp' => time() + 86400
+            ]);
+            
+            return $this->success([
+                'karyawan' => [
+                    'id' => $karyawan->id,
+                    'namaKaryawan' => $karyawan->namaKaryawan,
+                    'created_at' => $karyawan->created_at
+                ],
+                'token' => $token
+            ], 'Authentication successful');
+            
+        } catch (Exception $e) {
+            return $this->serverError('Authentication failed: ' . $e->getMessage());
+        }
+    }
+
 }

@@ -12,6 +12,7 @@ Route::post('/auth/register', 'AuthController@register');
 Route::post('/auth/login', 'AuthController@login');
 Route::post('/auth/otp-forgot-password', 'AuthController@otpForgotPassword');
 Route::post('/auth/verify-otp', 'AuthController@verifyOtp');
+Route::post('/auth/self-auth', 'AuthController@selfAuth');
 
 // banner
 Route::get('/banners', 'BannerController@index');
@@ -27,9 +28,3 @@ Route::get('/layanan/{id}', 'LayananController@show');
 Route::get('/promo-vouchers', 'PromoVoucherController@index');
 Route::get('/promo-vouchers/{id}', 'PromoVoucherController@show');
 
-Route::get('/posts', 'PostController@index');
-Route::get('/posts/{id}', 'PostController@show');
-Route::post('/posts', 'PostController@store');
-Route::put('/posts/{id}', 'PostController@update');
-Route::patch('/posts/{id}', 'PostController@update');
-Route::delete('/posts/{id}', 'PostController@destroy');
