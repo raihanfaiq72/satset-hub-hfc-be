@@ -30,7 +30,7 @@ class AuthController extends BaseController {
             
             $user = new Customer();
             $user->username = $data['username'];
-            $user->password = $data['password'];
+            $user->password = password_hash($data['password'], PASSWORD_DEFAULT);
             $user->namaCustomer = $data['namaCustomer'] ?? '-';
             $user->idCustomer = $data['idCustomer'] ?? 'default';
             $user->tglRegister = date('Y-m-d H:i:s');
@@ -63,17 +63,16 @@ class AuthController extends BaseController {
         $data = $this->getRequestData();
         
         $validation = $this->validateRequired($data, [
-            'noHp',
             'username',
             'password'
         ]);
         if ($validation) return $validation;
         
         try {
-            $user = Customer::where('noHp', $data['noHp'])->first();
+            $user = Customer::where('username', $data['username'])->first();
             
             if (!$user || !$user->verifyPassword($data['password'])) {
-                return $this->unauthorized('Invalid phone number or password');
+                return $this->unauthorized('Invalid username or password');
             }
             
             $token = $this->jwt->generateToken([
@@ -97,4 +96,3 @@ class AuthController extends BaseController {
         }
     }
 }
-?>

@@ -28,4 +28,8 @@ class Customer extends Model {
     public function user() {
         return $this->belongsTo(User::class);
     }
+    
+    public function verifyPassword($password) {
+        return password_verify($password, $this->password);
+    }
 }
