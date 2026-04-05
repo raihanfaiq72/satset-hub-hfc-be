@@ -23,9 +23,9 @@ class AuthController extends BaseController {
         }
         
         try {
-            $existingUser = Customer::where('noHp', $data['noHp'])->first();
+            $existingUser = Customer::where('noHp', $data['noHp'])->where('username', $data['username'])->first();
             if ($existingUser) {
-                return $this->conflict('Phone number already registered');
+                return $this->conflict('Phone number or username already registered');
             }
             
             $user = new Customer();
