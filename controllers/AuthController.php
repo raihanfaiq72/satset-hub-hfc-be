@@ -31,6 +31,9 @@ class AuthController extends BaseController {
             $user = new Customer();
             $user->username = $data['username'];
             $user->password = $data['password'];
+            $user->namaCustomer = $data['namaCustomer'] ?? '-';
+            $user->idCustomer = $data['idCustomer'] ?? 'default';
+            $user->tglRegister = date('Y-m-d H:i:s');
             $user->noHp = $data['noHp'];
             $user->save();
             
@@ -44,6 +47,7 @@ class AuthController extends BaseController {
                 'user' => [
                     'id' => $user->id,
                     'username' => $user->username,
+                    'namaCustomer' => '-',
                     'noHp' => $user->noHp,
                     'created_at' => $user->created_at
                 ],
