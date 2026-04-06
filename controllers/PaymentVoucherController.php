@@ -530,7 +530,7 @@ class PaymentVoucherController extends BaseController {
         ]);
         if ($validation) return $validation;
         $user_id = $data['user_id'];
-        
+
         if (!$user_id) {
             return $this->validationError('user_id is required');
         }
@@ -555,4 +555,33 @@ class PaymentVoucherController extends BaseController {
             return $this->serverError('Failed to fetch user voucher history: ' . $e->getMessage());
         }
     }   
+
+    public function generateImageVoucher($id) {
+        $this->auth->authenticate();
+        try {
+            $voucher = PvVouchers::find($id);
+            if (!$voucher) {
+                return $this->notFound('Voucher not found');
+            }
+
+            $batch = PvBatches::find($voucher->batch_id);
+            if (!$batch) {
+                return $this->notFound('Batch not found');
+            }
+
+            $renderedImage = "Rendered image for voucher code: " . $voucher->voucher_code;
+
+            $voucher->rendered_image = $renderedImage;
+            $voucher->save();
+
+            return $this->success([
+                'voucher_id' => $voucher->id,
+                'voucher_code' => $voucher->voucher_code,
+                'rendered_image' => $renderedImage
+            ], 'Voucher image generated successfully');
+
+        } catch (Exception $e) {
+            return $this->serverError('Failed to generate voucher image: ' . $e->getMessage());
+        }
+    }
 }

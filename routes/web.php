@@ -42,3 +42,4 @@ Route::post('/payment-vouchers/transfer', 'PaymentVoucherController@transfer');
 Route::post('/payment-vouchers/user-use', 'PaymentVoucherController@userUse');
 Route::get('/payment-vouchers/user', 'PaymentVoucherController@userVouchers');
 Route::get('/payment-vouchers/user/history', 'PaymentVoucherController@userVoucherHistory');
+Route::get('/payment-vouchers/generate-image-voucher/{id}', 'PaymentVoucherController@generateImageVoucher');
