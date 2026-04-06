@@ -123,8 +123,15 @@ class AuthController extends BaseController {
             
             $_SESSION['last_otp_' . $data['noHp']] = time();
             
+            $message = "Kode OTP Anda untuk reset password: {$otp}. Kode ini berlaku selama 5 menit.";
+            $waResult = WaHelper::sendMessage($data['noHp'], $message, $_ENV['WA_API_KEY']);
+            
+            if (!$waResult['success']) {
+                return $this->serverError('Failed to send OTP via WhatsApp: ' . $waResult['message']);
+            }
+            
             return $this->success([
-                'otp_debug' => $otp 
+                'otp_debug' => 'Hidup jokow....'
             ], 'OTP sent to registered phone number');
             
         } catch (Exception $e) {
