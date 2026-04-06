@@ -514,4 +514,32 @@ class PaymentVoucherController extends BaseController {
             return $this->serverError('Failed to fetch user vouchers: ' . $e->getMessage());
         }
     }
+
+    public function userVoucherHistory() {
+        $this->auth->authenticate();
+        $user_id = $_GET['user_id'] ?? null;
+        if (!$user_id) {
+            return $this->validationError('user_id is required');
+        }
+
+        try {
+            $vouchers = PvVouchers::where('current_owner_id', $user_id)->get();
+            $history = [];
+
+            foreach ($vouchers as $voucher) {
+                $transfers = PvTransfers::where('voucher_id', $voucher->id)->get();
+                $redemptions = PvRedemptions::where('voucher_id', $voucher->id)->get();
+
+                $history[] = [
+                    'voucher' => $voucher,
+                    'transfers' => $transfers,
+                    'redemptions' => $redemptions
+                ];
+            }
+
+            return $this->success($history);
+        } catch (Exception $e) {
+            return $this->serverError('Failed to fetch user voucher history: ' . $e->getMessage());
+        }
+    }   
 }
