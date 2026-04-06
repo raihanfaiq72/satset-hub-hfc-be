@@ -313,4 +313,70 @@ class PaymentVoucherController extends BaseController {
             return $this->serverError('Failed to delete payment voucher batch: ' . $e->getMessage());
         }
     }
+
+    public function userBuy() {
+        $data = $this->getRequestData();
+
+        $validation = $this->validateRequired($data, [
+            'user_id',
+            'voucher_id'
+        ]);
+        if ($validation) return $validation;
+
+        $voucherIds = $data['voucher_id'];
+        if(!is_array($voucherIds)){
+            $voucherIds = [$voucherIds];
+        }
+
+        $vouchers = PvVouchers::whereIn('id', $voucherIds)->where('status', 'available')->get();
+
+        if(count($vouchers) !== count($voucherIds)){
+            return $this->serverError('Some vouchers are not available for purchase');
+        }
+
+        $purchased = [];
+        $batchSoldCounts = []; 
+
+        foreach($vouchers as $voucher){
+            $voucher->current_owner_id = $data['user_id'];
+            $voucher->original_owner_id = $voucher->original_owner_id ?? $data['user_id'];
+            $voucher->status = 'sold'; 
+            $voucher->sold_at = date('Y-m-d H:i:s');
+            $voucher->save();
+
+            $batchSoldCounts[$voucher->batch_id] = ($batchSoldCounts[$voucher->batch_id] ?? 0) + 1;
+
+            $purchased[] = [
+                'id' => $voucher->id,
+                'batch_id' => $voucher->batch_id,
+                'voucher_code' => $voucher->voucher_code,
+                'face_value' => $voucher->face_value,
+                'status' => $voucher->status, 
+                'current_owner_id' => $voucher->current_owner_id,
+                'original_owner_id' => $voucher->original_owner_id,
+                'sold_at' => $voucher->sold_at,
+                'used_at' => $voucher->used_at,
+                'rendered_image' => $voucher->rendered_image
+            ];
+        }
+
+        foreach($batchSoldCounts as $batchId => $soldQty){
+            $this->updatePaymentVoucherBatches($batchId, $soldQty);
+        }
+
+        return $this->success($purchased, 'Voucher(s) purchased successfully');
+    }
+
+
+    private function updatePaymentVoucherBatches($voucher_batch_id, $sold_qty){
+        $batch = PvBatches::find($voucher_batch_id);
+        if(!$batch) return;
+
+        $batch->sold_qty = $batch->sold_qty ?? 0; 
+        $available = $batch->total_qty - $batch->sold_qty;
+
+        $toAdd = min($sold_qty, $available);
+        $batch->sold_qty += $toAdd;
+        $batch->save();
+    }
 }
