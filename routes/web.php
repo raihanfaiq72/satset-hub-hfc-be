@@ -27,4 +27,13 @@ Route::get('/layanan/{id}', 'LayananController@show');
 // promo voucher
 Route::get('/promo-vouchers', 'PromoVoucherController@index');
 Route::get('/promo-vouchers/{id}', 'PromoVoucherController@show');
+Route::post('/promo-vouchers/redeem', 'PromoVoucherController@redeem');
+Route::post('/promo-vouchers/create', 'PromoVoucherController@create');
 
+// payment voucher
+Route::get('/payment-vouchers', 'PaymentVoucherController@index');
+Route::get('/payment-vouchers/batches', 'PaymentVoucherController@batches');
+Route::post('/payment-vouchers/batches/create', 'PaymentVoucherController@batchCreate');
+Route::put('/payment-vouchers/batches/{id}/edit', 'PaymentVoucherController@batchEdit');
+Route::delete('/payment-vouchers/batches/{id}/delete', 'PaymentVoucherController@batchDelete');
+Route::delete('/payment-vouchers/batches/{id}/force-delete', 'PaymentVoucherController@batchForceDelete');
