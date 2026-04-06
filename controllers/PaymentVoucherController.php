@@ -501,8 +501,14 @@ class PaymentVoucherController extends BaseController {
     }
 
     public function userVouchers() {
-        $this->auth->authenticate();
-        $user_id = $_GET['user_id'] ?? null;
+        // $this->auth->authenticate();
+        $data = $this->getRequestData();
+
+        $validation = $this->validateRequired($data, [
+            'user_id',
+        ]);
+        if ($validation) return $validation;
+        $user_id = $data['user_id'];
         if (!$user_id) {
             return $this->validationError('user_id is required');
         }
@@ -516,8 +522,15 @@ class PaymentVoucherController extends BaseController {
     }
 
     public function userVoucherHistory() {
-        $this->auth->authenticate();
-        $user_id = $_GET['user_id'] ?? null;
+        // $this->auth->authenticate();
+        $data = $this->getRequestData();
+
+        $validation = $this->validateRequired($data, [
+            'user_id',
+        ]);
+        if ($validation) return $validation;
+        $user_id = $data['user_id'];
+        
         if (!$user_id) {
             return $this->validationError('user_id is required');
         }
