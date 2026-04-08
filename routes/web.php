@@ -52,3 +52,5 @@ Route::get('/order/history', 'OrderController@orderHistory');
 // customer
 Route::get('/customer', 'CustomerController@index');
 Route::put('/customer/update', 'CustomerController@update');
+Route::post('/customer/request-update-otp', 'CustomerController@requestUpdateOtp');
+Route::post('/customer/verify-update-otp', 'CustomerController@verifyUpdateOtp');
