@@ -64,7 +64,7 @@ class OrderController extends BaseController {
         }
     }
 
-    public function generateInquiryCode() {
+    private function generateInquiryCode() {
         $date = date('ymd');
         $prefix = "CUST" . $date;
         $lastInquiry = Inquiry::where('kodeInquiry', 'LIKE', $prefix . '-%')
