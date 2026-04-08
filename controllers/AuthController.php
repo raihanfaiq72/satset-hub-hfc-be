@@ -23,7 +23,7 @@ class AuthController extends BaseController {
         }
         
         try {
-            $existingUser = Customer::where('noHp', $data['noHp'])->where('username', $data['username'])->first();
+            $existingUser = Customer::where('noHp', $data['noHp'])->orWhere('username', $data['username'])->first();
             if ($existingUser) {
                 return $this->conflict('Phone number or username already registered');
             }
@@ -32,7 +32,7 @@ class AuthController extends BaseController {
             $user->username = $data['username'];
             $user->password = password_hash($data['password'], PASSWORD_DEFAULT);
             $user->namaCustomer = $data['namaCustomer'] ?? '-';
-            $user->idCustomer = $data['idCustomer'] ?? 'default';
+            $user->idCustomer = $this->generateCustomerCode();
             $user->tglRegister = date('Y-m-d H:i:s');
             $user->noHp = $data['noHp'];
             $user->save();
@@ -229,6 +229,23 @@ class AuthController extends BaseController {
         } catch (Exception $e) {
             return $this->serverError('Failed to reset password: ' . $e->getMessage());
         }
+    }
+
+    private function generateCustomerCode() {
+        $date = date('ym');
+        $prefix = "C" . $date;
+        $lastCustomer = Customer::where('idCustomer', 'LIKE', $prefix . '-%')
+            ->orderBy('idCustomer', 'DESC')
+            ->first();
+
+        if ($lastCustomer) {
+            $lastCode = $lastCustomer->idCustomer;
+            $count = (int)substr($lastCode, -3) + 1;
+        } else {
+            $count = 1;
+        }
+
+        return $prefix . "-" . str_pad($count, 3, '0', STR_PAD_LEFT);
     }
 
 }
