@@ -8,10 +8,20 @@ class CustomerController extends BaseController {
     }
     
     public function index() {
-        $payload = $this->auth->authenticate();
+        $this->auth->authenticate();
+        $data = $this->getRequestData();
+
+        $validation = $this->validateRequired($data, [
+            'user_id',
+        ]);
+        if ($validation) return $validation;
+        $user_id = $data['user_id'];
+        if (!$user_id) {
+            return $this->validationError('user_id is required');
+        }
         
         try {
-            $customers = Customer::all();
+            $customers = Customer::where('id', $user_id)->first();
             
             return $this->success($customers);
             
@@ -20,17 +30,46 @@ class CustomerController extends BaseController {
         }
     }
     
-    public function show($id) {
-        $payload = $this->auth->authenticate();
+    public function update() {
+        $this->auth->authenticate();
+        $data = $this->getRequestData();
+
+        $validation = $this->validateRequired($data, [
+            'user_id',
+            'namaCustomer',
+            'email',
+            'nickname',
+            'info',
+            'title',
+            'status'
+        ]);
+
+        if ($validation) return $validation;
+        $user_id = $data['user_id'];
+
+        if (!$user_id) {
+            return $this->validationError('user_id is required');
+        }
         
         try {
-            $customer = Customer::find($id);
+            $customer = Customer::find($user_id);
             
             if (!$customer) {
                 return $this->notFound('Customer not found');
             }
+
+            $customer->namaCustomer = $data['namaCustomer'];
+            $customer->email = $data['email'];
+            $customer->nickname = $data['nickname'];
+            $customer->info = $data['info'];
+            $customer->title = $data['title'];
+            $customer->status = $data['status'];
             
-            return $this->success($customer);
+            if ($customer->save()) {
+                return $this->success($customer, 'Customer updated successfully');
+            } else {
+                return $this->serverError('Failed to update customer');
+            }
             
         } catch (Exception $e) {
             return $this->serverError('Failed to fetch customer: ' . $e->getMessage());

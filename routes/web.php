@@ -48,3 +48,7 @@ Route::get('/payment-vouchers/generate-image-voucher/{id}', 'PaymentVoucherContr
 // order
 Route::post('/order', 'OrderController@orderCreate');
 Route::get('/order/history', 'OrderController@orderHistory');
+
+// customer
+Route::get('/customer', 'CustomerController@index');
+Route::put('/customer/update', 'CustomerController@update');
