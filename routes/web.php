@@ -27,9 +27,6 @@ Route::get('/layanan/{kode}', 'LayananController@show');
 
 // promo voucher
 Route::get('/promo-vouchers', 'PromoVoucherController@index');
-Route::get('/promo-vouchers/{id}', 'PromoVoucherController@show');
-Route::post('/promo-vouchers/redeem', 'PromoVoucherController@redeem');
-Route::post('/promo-vouchers/create', 'PromoVoucherController@create');
 
 // payment voucher
 Route::get('/payment-vouchers', 'PaymentVoucherController@index');
