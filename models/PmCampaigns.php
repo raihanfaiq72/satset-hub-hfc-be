@@ -18,7 +18,7 @@ class PmCampaigns extends Model
         'valid_from',
         'valid_until',
         'lat',
-        'lang',
+        'lng',
         'radius_meter',
         'is_active',
     ];

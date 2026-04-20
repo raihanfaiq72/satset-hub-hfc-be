@@ -28,6 +28,99 @@ class PromoVoucherController extends BaseController {
         }
     }
 
+    public function campaignCreate() {
+        $this->auth->authenticate();
+        $data = $this->getRequestData();
+
+        $validation = $this->validateRequired($data, [
+            'name', 
+            'description', 
+            'discount_type',
+            'discount_value',
+            'max_discount',
+            'min_transaction',
+            'quota',
+            'per_user_limit',
+            'valid_from',
+            'valid_until',
+            'lat',
+            'lng',
+            'radius_meter',
+            'is_active',]);
+        if ($validation) return $validation;
+
+        try {
+            $campaign = PmCampaigns::create([
+                'name' => $data['name'],
+                'description' => $data['description'],
+                'discount_type' => $data['discount_type'],
+                'discount_value' => $data['discount_value'],
+                'max_discount' => $data['max_discount'],
+                'min_transaction' => $data['min_transaction'],
+                'quota' => $data['quota'],
+                'per_user_limit' => $data['per_user_limit'],
+                'valid_from' => $data['valid_from'],
+                'valid_until' => $data['valid_until'],
+                'lat' => $data['lat'],
+                'lng' => $data['lng'],
+                'radius_meter' => $data['radius_meter'],
+                'is_active' => $data['is_active'],
+            ]);
+
+            return $this->success($campaign, 'Campaign created successfully');
+        } catch (Exception $e) {
+            return $this->serverError('Failed to create campaign: ' . $e->getMessage());
+        }
+    }
+
+    public function campaignEdit($id) {
+        $this->auth->authenticate();
+        $data = $this->getRequestData();
+
+        try {
+            $campaign = PmCampaigns::find($id);
+            if (!$campaign) {
+                return $this->notFound('Campaign not found');
+            }
+
+            $campaign->name = $data['name'] ?? $campaign->name;
+            $campaign->description = $data['description'] ?? $campaign->description;
+            $campaign->discount_type = $data['discount_type'] ?? $campaign->discount_type;
+            $campaign->discount_value = $data['discount_value'] ?? $campaign->discount_value;
+            $campaign->max_discount = $data['max_discount'] ?? $campaign->max_discount;
+            $campaign->min_transaction = $data['min_transaction'] ?? $campaign->min_transaction;
+            $campaign->quota = $data['quota'] ?? $campaign->quota;
+            $campaign->per_user_limit = $data['per_user_limit'] ?? $campaign->per_user_limit;
+            $campaign->valid_from = $data['valid_from'] ?? $campaign->valid_from;
+            $campaign->valid_until = $data['valid_until'] ?? $campaign->valid_until;
+            $campaign->lat = $data['lat'] ?? $campaign->lat;
+            $campaign->lng = $data['lng'] ?? $campaign->lng;
+            $campaign->radius_meter = $data['radius_meter'] ?? $campaign->radius_meter;
+            $campaign->is_active = $data['is_active'] ?? $campaign->is_active;
+            $campaign->save();
+
+            return $this->success($campaign, 'Campaign updated successfully');
+        } catch (Exception $e) {
+            return $this->serverError('Failed to update campaign: ' . $e->getMessage());
+        }
+    }
+
+    public function campaignDelete($id) {
+        $this->auth->authenticate();
+        try {
+            $campaign = PmCampaigns::find($id);
+            if (!$campaign) {
+                return $this->notFound('Campaign not found');
+            }
+
+            $campaign->delete();
+
+            return $this->success(null, 'Campaign deleted successfully');
+        } catch (Exception $e) {
+            return $this->serverError('Failed to delete campaign: ' . $e->getMessage());
+        }
+    }
+
     public function campaignDetail($id) {
         $this->auth->authenticate();
         try{
