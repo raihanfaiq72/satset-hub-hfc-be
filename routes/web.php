@@ -38,6 +38,8 @@ Route::post('/promo-vouchers/use', 'PromoVoucherController@use');
 Route::get('/promo-vouchers/user', 'PromoVoucherController@userVouchers');
 Route::get('/promo-vouchers/user/history', 'PromoVoucherController@userVoucherHistory');
 Route::get('/promo-vouchers/generate-image-voucher/{id}', 'PromoVoucherController@generateImageVoucher');
+Route::post('/promo-vouchers/generate-receive-qr', 'PromoVoucherController@generateReceiveQR');
+Route::post('/promo-vouchers/generate-redeem-qr', 'PromoVoucherController@generateRedeemQR');
 
 // payment voucher
 Route::get('/payment-vouchers', 'PaymentVoucherController@index');
@@ -52,6 +54,13 @@ Route::post('/payment-vouchers/user-use', 'PaymentVoucherController@userUse');
 Route::get('/payment-vouchers/user', 'PaymentVoucherController@userVouchers');
 Route::get('/payment-vouchers/user/history', 'PaymentVoucherController@userVoucherHistory');
 Route::get('/payment-vouchers/generate-image-voucher/{id}', 'PaymentVoucherController@generateImageVoucher');
+Route::post('/payment-vouchers/generate-receive-qr', 'PaymentVoucherController@generateReceiveQR');
+Route::post('/payment-vouchers/generate-redeem-qr', 'PaymentVoucherController@generateRedeemQR');
+
+Route::post('/qr-code/generate-receive', 'QRCodeController@generateReceiveQR');
+Route::post('/qr-code/scan-and-transfer', 'QRCodeController@scanAndTransfer');
+Route::post('/qr-code/generate-redeem', 'QRCodeController@generateRedeemQR');
+Route::post('/qr-code/scan-and-redeem', 'QRCodeController@scanAndRedeem');
 
 // order
 Route::post('/order', 'OrderController@orderCreate');

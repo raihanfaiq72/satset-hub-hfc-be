@@ -596,4 +596,96 @@ class PaymentVoucherController extends BaseController {
             return $this->serverError('Failed to generate voucher image: ' . $e->getMessage());
         }
     }
+
+    public function generateReceiveQR() {
+        $this->auth->authenticate();
+        $data = $this->getRequestData();
+
+        $validation = $this->validateRequired($data, ['user_id']);
+        if ($validation) return $validation;
+
+        try {
+            $userId = $data['user_id'];
+            $timestamp = time();
+            $nonce = uniqid();
+            
+            $qrData = [
+                'type' => 'receive_payment_voucher',
+                'user_id' => $userId,
+                'timestamp' => $timestamp,
+                'nonce' => $nonce
+            ];
+
+            $qrCode = base64_encode(json_encode($qrData));
+            
+            $otp = $this->generateOTP();
+            $otpExpiry = date('Y-m-d H:i:s', strtotime('+5 minutes'));
+
+            $this->storeOTPSession($userId, $otp, $otpExpiry, 'receive', json_encode($qrData));
+
+            return $this->success([
+                'qr_code' => $qrCode,
+                'otp' => $otp,
+                'otp_expiry' => $otpExpiry,
+                'expires_at' => date('Y-m-d H:i:s', strtotime('+10 minutes'))
+            ], 'QR code generated successfully for receiving payment vouchers');
+
+        } catch (Exception $e) {
+            return $this->serverError('Failed to generate receive QR code: ' . $e->getMessage());
+        }
+    }
+
+    public function generateRedeemQR() {
+        $this->auth->authenticate();
+        $data = $this->getRequestData();
+
+        $validation = $this->validateRequired($data, ['voucher_id']);
+        if ($validation) return $validation;
+
+        try {
+            $voucherId = $data['voucher_id'];
+            $timestamp = time();
+            $nonce = uniqid();
+            
+            $qrData = [
+                'type' => 'redeem_payment_voucher',
+                'voucher_id' => $voucherId,
+                'timestamp' => $timestamp,
+                'nonce' => $nonce
+            ];
+
+            $qrCode = base64_encode(json_encode($qrData));
+            
+            $otp = $this->generateOTP();
+            $otpExpiry = date('Y-m-d H:i:s', strtotime('+5 minutes'));
+
+            $userId = $this->auth->user()['id'];
+            $this->storeOTPSession($userId, $otp, $otpExpiry, 'redeem', json_encode($qrData));
+
+            return $this->success([
+                'qr_code' => $qrCode,
+                'otp' => $otp,
+                'otp_expiry' => $otpExpiry,
+                'expires_at' => date('Y-m-d H:i:s', strtotime('+10 minutes'))
+            ], 'QR code generated successfully for payment voucher redemption');
+
+        } catch (Exception $e) {
+            return $this->serverError('Failed to generate redeem QR code: ' . $e->getMessage());
+        }
+    }
+
+    private function generateOTP() {
+        return sprintf('%06d', mt_rand(0, 999999));
+    }
+
+    private function storeOTPSession($userId, $otp, $expiry, $type, $qrData = null) {
+        return OtpSessions::create([
+            'user_id' => $userId,
+            'otp' => $otp,
+            'type' => $type,
+            'expires_at' => $expiry,
+            'qr_data' => $qrData,
+            'is_used' => false
+        ]);
+    }
 }
