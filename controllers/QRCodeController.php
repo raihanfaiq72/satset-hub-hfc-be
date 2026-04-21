@@ -206,23 +206,33 @@ class QRCodeController extends BaseController {
             }
 
             $voucherId = $qrData['voucher_id'];
-            $voucherType = $qrData['voucher_type'];
+            $voucherType = $qrData['voucher_type'] ?? (strpos($qrData['type'], 'promo') !== false ? 'promo' : 'payment');
             $qrTimestamp = $qrData['timestamp'];
             
             if (time() - $qrTimestamp > 600) {
                 return $this->badRequest('QR code expired');
             }
 
-            $currentUserId = $this->auth->user()['id'];
+            if ($voucherType === 'payment') {
+                $voucher = PvVouchers::find($voucherId);
+            } else {
+                $voucher = PmVouchers::find($voucherId);
+            }
 
-            if (!$this->verifyOTP($currentUserId, $data['otp'], 'redeem')) {
+            if (!$voucher) {
+                return $this->notFound('Voucher not found');
+            }
+
+            $ownerId = $voucher->current_owner_id;
+
+            if (!$this->verifyOTP($ownerId, $data['otp'], 'redeem')) {
                 return $this->badRequest('Invalid or expired OTP');
             }
 
             if ($voucherType === 'payment') {
-                return $this->redeemPaymentVoucher($voucherId, $currentUserId, $data);
+                return $this->redeemPaymentVoucher($voucherId, $ownerId, $data);
             } elseif ($voucherType === 'promo') {
-                return $this->redeemPromoVoucher($voucherId, $currentUserId, $data);
+                return $this->redeemPromoVoucher($voucherId, $ownerId, $data);
             } else {
                 return $this->badRequest('Invalid voucher type');
             }
