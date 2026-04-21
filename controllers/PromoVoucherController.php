@@ -336,15 +336,8 @@ class PromoVoucherController extends BaseController {
 
             $qrCode = base64_encode(json_encode($qrData));
             
-            $otp = $this->generateOTP();
-            $otpExpiry = date('Y-m-d H:i:s', strtotime('+5 minutes'));
-
-            $this->storeOTPSession($userId, $otp, $otpExpiry, 'receive', json_encode($qrData));
-
             return $this->success([
                 'qr_code' => $qrCode,
-                'otp' => $otp,
-                'otp_expiry' => $otpExpiry,
                 'expires_at' => date('Y-m-d H:i:s', strtotime('+10 minutes'))
             ], 'QR code generated successfully for receiving promo vouchers');
 
@@ -374,16 +367,8 @@ class PromoVoucherController extends BaseController {
 
             $qrCode = base64_encode(json_encode($qrData));
             
-            $otp = $this->generateOTP();
-            $otpExpiry = date('Y-m-d H:i:s', strtotime('+5 minutes'));
-
-            $userId = $this->auth->user()['id'];
-            $this->storeOTPSession($userId, $otp, $otpExpiry, 'redeem', json_encode($qrData));
-
             return $this->success([
                 'qr_code' => $qrCode,
-                'otp' => $otp,
-                'otp_expiry' => $otpExpiry,
                 'expires_at' => date('Y-m-d H:i:s', strtotime('+10 minutes'))
             ], 'QR code generated successfully for promo voucher redemption');
 

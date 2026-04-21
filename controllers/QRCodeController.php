@@ -28,15 +28,8 @@ class QRCodeController extends BaseController {
 
             $qrCode = base64_encode(json_encode($qrData));
             
-            $otp = $this->generateOTP();
-            $otpExpiry = date('Y-m-d H:i:s', strtotime('+5 minutes'));
-
-            $this->storeOTPSession($userId, $otp, $otpExpiry, 'receive', json_encode($qrData));
-
             return $this->success([
                 'qr_code' => $qrCode,
-                'otp' => $otp,
-                'otp_expiry' => $otpExpiry,
                 'expires_at' => date('Y-m-d H:i:s', strtotime('+10 minutes'))
             ], 'QR code generated successfully for receiving vouchers');
 
@@ -60,7 +53,7 @@ class QRCodeController extends BaseController {
         try {
             $qrData = json_decode(base64_decode($data['qr_code']), true);
             
-            if (!$qrData || $qrData['type'] !== 'receive_voucher') {
+            if (!$qrData || !in_array($qrData['type'], ['receive_voucher', 'receive_promo_voucher', 'receive_payment_voucher'])) {
                 return $this->badRequest('Invalid QR code');
             }
 
@@ -113,21 +106,82 @@ class QRCodeController extends BaseController {
 
             $qrCode = base64_encode(json_encode($qrData));
             
-            $otp = $this->generateOTP();
-            $otpExpiry = date('Y-m-d H:i:s', strtotime('+5 minutes'));
-
-            $userId = $this->auth->user()['id'];
-            $this->storeOTPSession($userId, $otp, $otpExpiry, 'redeem', json_encode($qrData));
-
             return $this->success([
                 'qr_code' => $qrCode,
-                'otp' => $otp,
-                'otp_expiry' => $otpExpiry,
                 'expires_at' => date('Y-m-d H:i:s', strtotime('+10 minutes'))
             ], 'QR code generated successfully for voucher redemption');
 
         } catch (Exception $e) {
             return $this->serverError('Failed to generate redeem QR code: ' . $e->getMessage());
+        }
+    }
+
+    public function scanAndSendOTP() {
+        $this->auth->authenticate();
+        $data = $this->getRequestData();
+
+        $validation = $this->validateRequired($data, ['qr_code']);
+        if ($validation) return $validation;
+
+        try {
+            $qrData = json_decode(base64_decode($data['qr_code']), true);
+            if (!$qrData || !isset($qrData['type'])) {
+                return $this->badRequest('Invalid QR code');
+            }
+
+            $targetUserId = null;
+            $type = '';
+            
+            if (in_array($qrData['type'], ['receive_voucher', 'receive_promo_voucher', 'receive_payment_voucher'])) {
+                $targetUserId = $qrData['user_id'];
+                $type = 'receive';
+            } elseif (in_array($qrData['type'], ['redeem_voucher', 'redeem_promo_voucher', 'redeem_payment_voucher'])) {
+                $voucherId = $qrData['voucher_id'];
+                $voucherType = $qrData['voucher_type'] ?? (strpos($qrData['type'], 'promo') !== false ? 'promo' : 'payment');
+                $type = 'redeem';
+                
+                if ($voucherType === 'payment') {
+                    $voucher = PvVouchers::find($voucherId);
+                } else {
+                    $voucher = PmVouchers::find($voucherId);
+                }
+                
+                if (!$voucher) {
+                    return $this->notFound('Voucher not found');
+                }
+                $targetUserId = $voucher->current_owner_id;
+            } else {
+                return $this->badRequest('Unsupported QR type');
+            }
+
+            if (!$targetUserId) {
+                return $this->badRequest('Could not identify target user');
+            }
+
+            $user = Customer::find($targetUserId);
+            if (!$user || !$user->noHp) {
+                return $this->notFound('Target user or phone number not found');
+            }
+
+            $otp = $this->generateOTP();
+            $otpExpiry = date('Y-m-d H:i:s', strtotime('+5 minutes'));
+            
+            $this->storeOTPSession($targetUserId, $otp, $otpExpiry, $type, json_encode($qrData));
+
+            $message = "Kode OTP Satset Anda adalah: {$otp}. Kode ini berlaku selama 5 menit. Rahasiakan kode ini dari siapapun.";
+            $waResult = WaHelper::sendMessage($user->noHp, $message, $_ENV['WA_API_KEY'] ?? '');
+
+            if (!$waResult['success']) {
+                return $this->serverError('Failed to send OTP via WhatsApp: ' . $waResult['message']);
+            }
+
+            return $this->success([
+                'target_phone' => substr($user->noHp, 0, 4) . '****' . substr($user->noHp, -4),
+                'expires_at' => $otpExpiry
+            ], 'OTP has been sent to the user\'s WhatsApp');
+
+        } catch (Exception $e) {
+            return $this->serverError('Failed to process QR scan: ' . $e->getMessage());
         }
     }
 
@@ -147,7 +201,7 @@ class QRCodeController extends BaseController {
         try {
             $qrData = json_decode(base64_decode($data['qr_code']), true);
             
-            if (!$qrData || $qrData['type'] !== 'redeem_voucher') {
+            if (!$qrData || !in_array($qrData['type'], ['redeem_voucher', 'redeem_promo_voucher', 'redeem_payment_voucher'])) {
                 return $this->badRequest('Invalid QR code');
             }
 
