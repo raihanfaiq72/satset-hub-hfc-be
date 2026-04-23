@@ -283,6 +283,9 @@ class PromoVoucherController extends BaseController {
         $this->auth->authenticate();
         try {
             $vouchers = PmVouchers::where('current_owner_id', $this->auth->user()['id'])->get();
+            foreach($vouchers as $voucher){
+                $voucher->voucher_type = 'promo';
+            }
             return $this->success($vouchers);
         } catch (Exception $e) {
             return $this->serverError('Failed to fetch user vouchers: ' . $e->getMessage());

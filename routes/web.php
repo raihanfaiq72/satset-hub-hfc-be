@@ -60,6 +60,7 @@ Route::post('/payment-vouchers/generate-redeem-qr', 'PaymentVoucherController@ge
 Route::post('/qr-code/generate-receive', 'QRCodeController@generateReceiveQR');
 Route::post('/qr-code/scan-and-send-otp', 'QRCodeController@scanAndSendOTP');
 Route::post('/qr-code/scan-and-transfer', 'QRCodeController@scanAndTransfer');
+Route::post('/qr-code/check-otp-status', 'QRCodeController@checkOTPStatus');
 Route::post('/qr-code/generate-redeem', 'QRCodeController@generateRedeemQR');
 Route::post('/qr-code/scan-and-redeem', 'QRCodeController@scanAndRedeem');
 

@@ -7,8 +7,9 @@ class PvTransfers extends Model {
     protected $fillable = [
         'id',
         'voucher_id',
-        'from_customer_id',
-        'to_customer_id',
+        'from_user_id',
+        'to_user_id',
+        'transfer_type',
         'reference_id',
         'notes'
     ];

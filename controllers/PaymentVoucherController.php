@@ -526,6 +526,7 @@ class PaymentVoucherController extends BaseController {
 
              foreach($vouchers as $voucher){
                 $voucher->batch_info = $voucher_batch[$voucher->batch_id] ?? null;
+                $voucher->voucher_type = 'payment';
             }
             return $this->success($vouchers);
         } catch (Exception $e) {

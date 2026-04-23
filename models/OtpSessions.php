@@ -17,15 +17,14 @@ class OtpSessions extends Model
         'updated_at'
     ];
 
-    protected $dates = [
-        'expires_at',
-        'created_at',
-        'updated_at'
+    protected $casts = [
+        'expires_at' => 'datetime',
+        'is_used' => 'boolean'
     ];
 
     public function scopeActive($query)
     {
-        return $query->where('is_used', false)->where('expires_at', '>', now());
+        return $query->where('is_used', false)->where('expires_at', '>', \Illuminate\Support\Carbon::now());
     }
 
     public function scopeForUser($query, $userId)

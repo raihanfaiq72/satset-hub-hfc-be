@@ -28,6 +28,9 @@ class QRCodeController extends BaseController {
 
             $qrCode = base64_encode(json_encode($qrData));
             
+            // Clear any existing pending receive sessions for this user
+            $this->clearOTPSession($userId, 'receive');
+            
             return $this->success([
                 'qr_code' => $qrCode,
                 'expires_at' => date('Y-m-d H:i:s', strtotime('+10 minutes'))
@@ -57,18 +60,17 @@ class QRCodeController extends BaseController {
                 return $this->badRequest('Invalid QR code');
             }
 
-            $toUserId = $qrData['user_id'];
-            $qrTimestamp = $qrData['timestamp'];
-            
-            if (time() - $qrTimestamp > 600) {
-                return $this->badRequest('QR code expired');
-            }
-
-            if (!$this->verifyOTP($toUserId, $data['otp'], 'receive')) {
+            $fromUserId = $this->auth->user()['id'];
+            $otpSession = $this->verifyOTP($fromUserId, $data['otp'], 'receive');
+            if (!$otpSession) {
                 return $this->badRequest('Invalid or expired OTP');
             }
 
-            $fromUserId = $this->auth->user()['id'];
+            // Get the actual recipient from the OTP session (the person who scanned)
+            $sessionData = json_decode($otpSession->qr_data, true);
+            $toUserId = isset($sessionData['scanner_id']) ? (int)$sessionData['scanner_id'] : (int)$qrData['user_id'];
+            
+            error_log("Transfer Debug: From=$fromUserId, To=$toUserId, Scanner=" . ($sessionData['scanner_id'] ?? 'N/A'));
 
             if ($data['voucher_type'] === 'payment') {
                 return $this->transferPaymentVoucher($fromUserId, $toUserId, $data['voucher_id']);
@@ -105,6 +107,9 @@ class QRCodeController extends BaseController {
             ];
 
             $qrCode = base64_encode(json_encode($qrData));
+            
+            // Clear any existing pending redeem sessions for this user
+            $this->clearOTPSession($this->auth->user()['id'], 'redeem');
             
             return $this->success([
                 'qr_code' => $qrCode,
@@ -166,7 +171,9 @@ class QRCodeController extends BaseController {
             $otp = $this->generateOTP();
             $otpExpiry = date('Y-m-d H:i:s', strtotime('+5 minutes'));
             
+            $qrData['scanner_id'] = $this->auth->user()['id'];
             $this->storeOTPSession($targetUserId, $otp, $otpExpiry, $type, json_encode($qrData));
+            error_log("OTP Session stored for user $targetUserId, type $type, otp $otp");
 
             $message = "Kode OTP Satset Anda adalah: {$otp}. Kode ini berlaku selama 5 menit. Rahasiakan kode ini dari siapapun.";
             $waResult = WaHelper::sendMessage($user->noHp, $message, $_ENV['WA_API_KEY'] ?? '');
@@ -258,18 +265,22 @@ class QRCodeController extends BaseController {
 
         DB::beginTransaction();
         try {
+            if ($fromUserId == $toUserId) {
+                error_log("Warning: Attempted transfer to self (ID: $fromUserId)");
+            }
+
             $voucher->current_owner_id = $toUserId;
             $voucher->save();
 
-            PvTransfers::create([
-                'voucher_id' => $voucher->id,
-                'from_customer_id' => $fromUserId,
-                'to_customer_id' => $toUserId,
-                'reference_id' => uniqid('QR_TRANSFER_'),
-                'notes' => 'Transfer via QR code with OTP verification'
-            ]);
+            $transfer = new PvTransfers();
+            $transfer->voucher_id = $voucher->id;
+            $transfer->from_user_id = $fromUserId;
+            $transfer->to_user_id = $toUserId;
+            $transfer->transfer_type = 'transfer';
+            $transfer->notes = 'Transfer via QR code with OTP verification';
+            $transfer->save();
 
-            $this->clearOTPSession($toUserId, 'receive');
+            $this->clearOTPSession($fromUserId, 'receive');
 
             DB::commit();
             return $this->success($voucher, 'Payment voucher transferred successfully');
@@ -296,6 +307,7 @@ class QRCodeController extends BaseController {
 
         DB::beginTransaction();
         try {
+            error_log("Transferring promo voucher {$voucher->id} from {$fromUserId} to {$toUserId}");
             $voucher->current_owner_id = $toUserId;
             $voucher->save();
 
@@ -307,7 +319,7 @@ class QRCodeController extends BaseController {
                 'notes' => 'Transfer via QR code with OTP verification'
             ]);
 
-            $this->clearOTPSession($toUserId, 'receive');
+            $this->clearOTPSession($fromUserId, 'receive');
 
             DB::commit();
             return $this->success($voucher, 'Promo voucher transferred successfully');
@@ -469,4 +481,31 @@ class QRCodeController extends BaseController {
             ->update(['is_used' => true]);
     }
 
+    public function checkOTPStatus() {
+        $this->auth->authenticate();
+        $user = $this->auth->user();
+        
+        try {
+            error_log("Checking OTP status for user " . $user['id']);
+            $otpSession = OtpSessions::forUser($user['id'])
+                ->byType('receive')
+                ->active()
+                ->orderBy('created_at', 'desc')
+                ->first();
+            
+            if ($otpSession && $otpSession->isValid()) {
+                return $this->success([
+                    'scanned' => true,
+                    'target_phone' => substr($user['noHp'], 0, 4) . '****' . substr($user['noHp'], -4),
+                ], 'QR code has been scanned and OTP sent');
+            }
+
+            return $this->success([
+                'scanned' => false
+            ], 'No active scan detected');
+
+        } catch (Exception $e) {
+            return $this->serverError('Failed to check OTP status: ' . $e->getMessage());
+        }
+    }
 }
