@@ -467,11 +467,11 @@ class QRCodeController extends BaseController {
             ->where('otp', $otp)
             ->first();
 
-        if (!$otpSession) {
-            return false;
+        if ($otpSession && $otpSession->isValid()) {
+            return $otpSession;
         }
 
-        return $otpSession->isValid();
+        return false;
     }
 
     private function clearOTPSession($userId, $type) {
