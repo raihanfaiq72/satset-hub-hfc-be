@@ -57,7 +57,7 @@ class OrderController extends BaseController {
             $order->status = 62;
             $order->tglOrder = date('Y-m-d H:i:s');
             $order->tglStatus = date('Y-m-d H:i:s');
-            $order->payment_method = "Non-Tunai (Transfer)";
+            $order->payment_method = $data['payment_method'] ?? "Non-Tunai (Transfer)";
             $order->save();
 
             return $this->created($order, 'Order created successfully');
@@ -80,7 +80,14 @@ class OrderController extends BaseController {
 
         try {
             $order = Order::with(['inquiry' => function($query) {
-                $query->with('logs');
+                $query->with([
+                    'logs', 
+                    'lokasi.province', 
+                    'lokasi.regency', 
+                    'lokasi.district', 
+                    'lokasi.village', 
+                    'layanan'
+                ]);
             }])->where('idCustomer', $user_id)->get();
             return $this->success($order);
         } catch (Exception $e) {

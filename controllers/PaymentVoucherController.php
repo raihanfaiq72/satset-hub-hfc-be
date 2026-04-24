@@ -335,7 +335,6 @@ class PaymentVoucherController extends BaseController {
 
     public function userBuy() {
         $this->auth->authenticate();
-        // DB::beginTransaction();
         $data = $this->getRequestData();
 
         $validation = $this->validateRequired($data, [
@@ -349,48 +348,55 @@ class PaymentVoucherController extends BaseController {
             $voucherIds = [$voucherIds];
         }
 
-        $vouchers = PvVouchers::whereIn('id', $voucherIds)->where('status', 'available')->get();
+        DB::beginTransaction();
+        try {
+            $vouchers = PvVouchers::whereIn('id', $voucherIds)->where('status', 'available')->get();
 
-        if(count($vouchers) !== count($voucherIds)){
-            return $this->serverError('Some vouchers are not available for purchase');
+            if(count($vouchers) !== count($voucherIds)){
+                DB::rollBack();
+                return $this->serverError('Some vouchers are not available for purchase');
+            }
+
+            $purchased = [];
+            $batchSoldCounts = []; 
+
+            foreach($vouchers as $voucher){
+                $voucher->current_owner_id = $data['user_id'];
+                $voucher->original_owner_id = $voucher->original_owner_id ?? $data['user_id'];
+                $voucher->status = 'sold'; 
+                $voucher->sold_at = date('Y-m-d H:i:s');
+                $voucher->save();
+
+                $batchSoldCounts[$voucher->batch_id] = ($batchSoldCounts[$voucher->batch_id] ?? 0) + 1;
+
+                $purchased[] = [
+                    'id' => $voucher->id,
+                    'batch_id' => $voucher->batch_id,
+                    'voucher_code' => $voucher->voucher_code,
+                    'face_value' => $voucher->face_value,
+                    'status' => $voucher->status, 
+                    'current_owner_id' => $voucher->current_owner_id,
+                    'original_owner_id' => $voucher->original_owner_id,
+                    'sold_at' => $voucher->sold_at,
+                    'used_at' => $voucher->used_at,
+                    'rendered_image' => $voucher->rendered_image
+                ];
+            }
+
+            foreach($batchSoldCounts as $batchId => $soldQty){
+                $this->updatePaymentVoucherBatches($batchId, $soldQty);
+            }
+
+            foreach($vouchers as $voucher){
+                $this->paymentVoucherTransfer($data['user_id'], $voucher->id);
+            }
+
+            DB::commit();
+            return $this->success($purchased, 'Voucher(s) purchased successfully');
+        } catch (Exception $e) {
+            DB::rollBack();
+            return $this->serverError('Failed to purchase vouchers: ' . $e->getMessage());
         }
-
-        $purchased = [];
-        $batchSoldCounts = []; 
-
-        foreach($vouchers as $voucher){
-            $voucher->current_owner_id = $data['user_id'];
-            $voucher->original_owner_id = $voucher->original_owner_id ?? $data['user_id'];
-            $voucher->status = 'sold'; 
-            $voucher->sold_at = date('Y-m-d H:i:s');
-            $voucher->save();
-
-            $batchSoldCounts[$voucher->batch_id] = ($batchSoldCounts[$voucher->batch_id] ?? 0) + 1;
-
-            $purchased[] = [
-                'id' => $voucher->id,
-                'batch_id' => $voucher->batch_id,
-                'voucher_code' => $voucher->voucher_code,
-                'face_value' => $voucher->face_value,
-                'status' => $voucher->status, 
-                'current_owner_id' => $voucher->current_owner_id,
-                'original_owner_id' => $voucher->original_owner_id,
-                'sold_at' => $voucher->sold_at,
-                'used_at' => $voucher->used_at,
-                'rendered_image' => $voucher->rendered_image
-            ];
-        }
-
-        foreach($batchSoldCounts as $batchId => $soldQty){
-            $this->updatePaymentVoucherBatches($batchId, $soldQty);
-        }
-
-        foreach($vouchers as $voucher){
-            $this->paymentVoucherTransfer($data['user_id'], $voucher->id);
-        }
-
-        return $this->success($purchased, 'Voucher(s) purchased successfully');
-        // DB::commit();
     }
 
 
@@ -417,7 +423,6 @@ class PaymentVoucherController extends BaseController {
 
     public function transfer() {
         $this->auth->authenticate();
-        DB::beginTransaction();
         $data = $this->getRequestData();
 
         $validation = $this->validateRequired($data, [
@@ -433,30 +438,36 @@ class PaymentVoucherController extends BaseController {
             $voucherIds = [$voucherIds];
         }
 
-        $vouchers = PvVouchers::whereIn('id', $voucherIds)->where('current_owner_id', $data['from_user_id'])->where('status', 'sold')->get();
+        DB::beginTransaction();
+        try {
+            $vouchers = PvVouchers::whereIn('id', $voucherIds)->where('current_owner_id', $data['from_user_id'])->where('status', 'sold')->get();
 
-        if(count($vouchers) !== count($voucherIds)){
-            return $this->serverError('Some vouchers are not available for transfer');
+            if(count($vouchers) !== count($voucherIds)){
+                DB::rollBack();
+                return $this->serverError('Some vouchers are not available for transfer');
+            }
+
+            foreach($vouchers as $voucher){
+                $voucher->current_owner_id = $data['to_user_id'];
+                $voucher->save();
+
+                $pv_transfer = new PvTransfers();
+                $pv_transfer->voucher_id = $voucher->id;
+                $pv_transfer->to_user_id = $data['to_user_id'];
+                $pv_transfer->transfer_type = $data['transfer_type'];
+                $pv_transfer->save();
+            }
+
+            DB::commit();
+            return $this->success(null, 'Voucher(s) transferred successfully');
+        } catch (Exception $e) {
+            DB::rollBack();
+            return $this->serverError('Failed to transfer vouchers: ' . $e->getMessage());
         }
-
-        foreach($vouchers as $voucher){
-            $voucher->current_owner_id = $data['to_user_id'];
-            $voucher->save();
-
-            $pv_transfer = new PvTransfers();
-            $pv_transfer->voucher_id = $voucher->id;
-            $pv_transfer->to_user_id = $data['to_user_id'];
-            $pv_transfer->transfer_type = $data['transfer_type'];
-            $pv_transfer->save();
-        }
-
-        return $this->success(null, 'Voucher(s) transferred successfully');
-        DB::commit();
     }
 
     public function userUse() {
         $this->auth->authenticate();
-        DB::beginTransaction();
         $data = $this->getRequestData();
 
         $validation = $this->validateRequired($data, [
@@ -471,30 +482,38 @@ class PaymentVoucherController extends BaseController {
             $voucherIds = [$voucherIds];
         }
 
-        $check_voucher = PvBatches::whereIn('id', function($query) use ($voucherIds){
-            $query->select('batch_id')->from('pv_vouchers')->whereIn('id', $voucherIds);
-        })->where('id_layanan', $data['layanan_id'])->first();
+        DB::beginTransaction();
+        try {
+            $check_voucher = PvBatches::whereIn('id', function($query) use ($voucherIds){
+                $query->select('batch_id')->from('pv_vouchers')->whereIn('id', $voucherIds);
+            })->where('id_layanan', $data['layanan_id'])->first();
 
-        if(!$check_voucher){
-            return $this->serverError('Some vouchers are not valid for this Service');
+            if(!$check_voucher){
+                DB::rollBack();
+                return $this->serverError('Some vouchers are not valid for this Service');
+            }
+
+            $vouchers = PvVouchers::whereIn('id', $voucherIds)->where('current_owner_id', $data['user_id'])->where('status', 'sold')->get();
+
+            if(count($vouchers) !== count($voucherIds)){
+                DB::rollBack();
+                return $this->serverError('Some vouchers are not available for use');
+            }
+
+            foreach($vouchers as $voucher){
+                $voucher->status = 'used';
+                $voucher->used_at = date('Y-m-d H:i:s');
+                $voucher->save();
+            }
+
+            $this->redemptions($voucherIds[0], $data['user_id'], $data['layanan_id'], $check_voucher->face_value);
+
+            DB::commit();
+            return $this->success(null, 'Voucher(s) used successfully');
+        } catch (Exception $e) {
+            DB::rollBack();
+            return $this->serverError('Failed to use vouchers: ' . $e->getMessage());
         }
-
-        $vouchers = PvVouchers::whereIn('id', $voucherIds)->where('current_owner_id', $data['user_id'])->where('status', 'sold')->get();
-
-        if(count($vouchers) !== count($voucherIds)){
-            return $this->serverError('Some vouchers are not available for use');
-        }
-
-        foreach($vouchers as $voucher){
-            $voucher->status = 'used';
-            $voucher->used_at = date('Y-m-d H:i:s');
-            $voucher->save();
-        }
-
-        $this->redemptions($voucherIds[0], $data['user_id'], $data['layanan_id'], $check_voucher->face_value);
-
-        return $this->success(null, 'Voucher(s) used successfully');
-        DB::commit();
     }
 
     private function redemptions($voucher_id,$user_id,$id_layanan,$value){

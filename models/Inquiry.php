@@ -53,4 +53,9 @@ class Inquiry extends Model
     {
         return $this->hasMany(LogInquiry::class, 'idInquiry')->orderBy('tgl', 'desc');
     }
+
+    public function lokasi()
+    {
+        return $this->belongsTo(Lokasi::class, 'idLokasi');
+    }
 }

@@ -14,14 +14,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     exit;
 }
 
-$request_uri = $_SERVER['REQUEST_URI'];
+$request_uri = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
 $request_method = $_SERVER['REQUEST_METHOD'];
 
 $base_path = '/api';
 $path = str_replace($base_path, '', $request_uri);
 $path = trim($path, '/');
 
-error_log("Request URI: $request_uri");
+error_log("Request URI (path only): $request_uri");
 error_log("Request Method: $request_method");
 error_log("Path after removing base: '$path'");
 
