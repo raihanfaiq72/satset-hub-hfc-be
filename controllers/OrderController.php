@@ -78,7 +78,14 @@ class OrderController extends BaseController {
 
         try {
             $order = Order::with(['inquiry' => function($query) {
-                $query->with('logs', 'lokasi', 'layanan');
+                $query->with([
+                    'logs', 
+                    'lokasi.province', 
+                    'lokasi.regency', 
+                    'lokasi.district', 
+                    'lokasi.village', 
+                    'layanan'
+                ]);
             }])->where('idCustomer', $user_id)->get();
             return $this->success($order);
         } catch (Exception $e) {
