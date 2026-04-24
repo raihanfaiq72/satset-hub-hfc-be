@@ -90,5 +90,5 @@ Route::get('/districts/{id}', 'LokasiController@getDistricts');
 Route::get('/villages/{id}', 'LokasiController@getVillages');
  
 // proxy
-Route::get('/api/proxy/search', 'ProxyController@search');
-Route::get('/api/proxy/reverse', 'ProxyController@reverse');
+Route::get('/proxy/search', 'ProxyController@search');
+Route::get('/proxy/reverse', 'ProxyController@reverse');
