@@ -13,6 +13,7 @@ Route::post('/auth/login', 'AuthController@login');
 Route::post('/auth/otp-forgot-password', 'AuthController@otpForgotPassword');
 Route::post('/auth/verify-otp', 'AuthController@verifyOtp');
 Route::post('/auth/reset-password', 'AuthController@resetPassword');
+Route::post('/auth/update-profile', 'AuthController@updateProfile');
 Route::post('/auth/self-auth', 'AuthController@selfAuth');
 
 // banner

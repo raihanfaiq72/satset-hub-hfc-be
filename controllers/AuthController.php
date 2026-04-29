@@ -32,7 +32,6 @@ class AuthController extends BaseController {
             $user->username = $data['username'];
             $user->password = password_hash($data['password'], PASSWORD_DEFAULT);
             $user->namaCustomer = $data['namaCustomer'] ?? '-';
-            $user->idCustomer = $this->generateCustomerCode();
             $user->tglRegister = date('Y-m-d H:i:s');
             $user->noHp = $data['noHp'];
             $user->save();
@@ -85,6 +84,7 @@ class AuthController extends BaseController {
                 'user' => [
                     'id' => $user->id,
                     'username' => $user->username,
+                    'namaCustomer' => $user->namaCustomer,
                     'noHp' => $user->noHp,
                     'created_at' => $user->created_at
                 ],
@@ -231,21 +231,49 @@ class AuthController extends BaseController {
         }
     }
 
-    private function generateCustomerCode() {
-        $date = date('ym');
-        $prefix = "C" . $date;
-        $lastCustomer = Customer::where('idCustomer', 'LIKE', $prefix . '-%')
-            ->orderBy('idCustomer', 'DESC')
-            ->first();
-
-        if ($lastCustomer) {
-            $lastCode = $lastCustomer->idCustomer;
-            $count = (int)substr($lastCode, -3) + 1;
-        } else {
-            $count = 1;
+    public function updateProfile() {
+        $data = $this->getRequestData();
+        
+        $validation = $this->validateRequired($data, [
+            'id',
+            'nama',
+            'username',
+            'email',
+            'noHp'
+        ]);
+        if ($validation) return $validation;
+        
+        try {
+            $user = Customer::find($data['id']);
+            if (!$user) {
+                return $this->notFound('User not found');
+            }
+            
+            // Check if username/noHp/email is taken by others
+            $existing = Customer::where('id', '!=', $data['id'])
+                ->where(function($query) use ($data) {
+                    $query->where('username', $data['username'])
+                          ->orWhere('noHp', $data['noHp'])
+                          ->orWhere('email', $data['email']);
+                })->first();
+                
+            if ($existing) {
+                return $this->conflict('Username, Phone Number, or Email already in use');
+            }
+            
+            $user->namaCustomer = $data['nama'];
+            $user->username = $data['username'];
+            $user->email = $data['email'];
+            $user->noHp = $data['noHp'];
+            $user->save();
+            
+            return $this->success($user, 'Profile updated successfully');
+            
+        } catch (Exception $e) {
+            return $this->serverError('Failed to update profile: ' . $e->getMessage());
         }
-
-        return $prefix . "-" . str_pad($count, 3, '0', STR_PAD_LEFT);
     }
+
+
 
 }
