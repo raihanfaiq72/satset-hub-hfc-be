@@ -16,6 +16,7 @@ class OrderController extends BaseController {
             'idLayanan',
             'tglPekerjaan',
             'idSubLayanan',
+            'voucher_type',
             'idLokasi'
         ]);
 
@@ -38,6 +39,7 @@ class OrderController extends BaseController {
             $inquiry->tglStatus = date('Y-m-d H:i:s');
             $inquiry->office_id = $office->id;
             $inquiry->tax_type = $office->tax_type;
+            $inquiry->voucher_type = $data['voucher_type'] ?? null;
             $inquiry->voucher_code = $data['voucher_code'] ?? 0;
             $inquiry->voucher_discount_amount = $data['voucher_discount_amount'] ?? 0;
             $inquiry->assign = 11;

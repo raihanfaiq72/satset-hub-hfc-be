@@ -54,6 +54,7 @@ class PaymentVoucherController extends BaseController {
             'code_rotation',
             'template_layout',
             'output_format',
+            'template_image',
             'is_active',
             'created_by'
         ]);
@@ -65,6 +66,43 @@ class PaymentVoucherController extends BaseController {
             $templateLayout = $this->parseJsonField($data['template_layout']);
             if ($templateLayout === false) {
                 return $this->validationError('template_layout must be a valid JSON object or array');
+            }
+
+            $uploadDir = __DIR__ . '/uploads/';
+
+            // bikin folder kalau belum ada
+            if (!is_dir($uploadDir)) {
+                mkdir($uploadDir, 0777, true);
+            }
+
+            // === voucher_image ===
+            if (isset($_FILES['voucher_image']) && $_FILES['voucher_image']['error'] === 0) {
+                $ext = pathinfo($_FILES['voucher_image']['name'], PATHINFO_EXTENSION);
+                $voucherName = uniqid('voucher_') . '.' . $ext;
+
+                move_uploaded_file(
+                    $_FILES['voucher_image']['tmp_name'],
+                    $uploadDir . $voucherName
+                );
+
+                $voucherImagePath = 'uploads/' . $voucherName;
+            } else {
+                $voucherImagePath = null;
+            }
+
+            // === template_image ===
+            if (isset($_FILES['template_image']) && $_FILES['template_image']['error'] === 0) {
+                $ext = pathinfo($_FILES['template_image']['name'], PATHINFO_EXTENSION);
+                $templateName = uniqid('template_') . '.' . $ext;
+
+                move_uploaded_file(
+                    $_FILES['template_image']['tmp_name'],
+                    $uploadDir . $templateName
+                );
+
+                $templateImagePath = 'uploads/' . $templateName;
+            } else {
+                $templateImagePath = null;
             }
 
             $batch = new PvBatches();
@@ -81,8 +119,8 @@ class PaymentVoucherController extends BaseController {
             $batch->voucher_name = $data['voucher_name'];
             $batch->voucher_description = $data['voucher_description'];
             $batch->voucher_icon = $data['voucher_icon'];
-            $batch->voucher_image = $data['voucher_image'];
-            $batch->template_image = $data['template_image'];
+            $batch->voucher_image = $voucherImagePath;
+            $batch->template_image = $templateImagePath;
             $batch->code_pos_x = $data['code_pos_x'];
             $batch->code_pos_y = $data['code_pos_y'];
             $batch->code_font_size = $data['code_font_size'];

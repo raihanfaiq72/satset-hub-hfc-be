@@ -72,6 +72,7 @@ Route::post('/order/check-available-ranger', 'OrderController@checkAvailableRang
 Route::get('/tracking/{id}', 'TrackingController@index');
 
 // customer
+Route::get('/get-customer-all', 'CustomerController@getAll');
 Route::get('/customer', 'CustomerController@index');
 Route::put('/customer/update', 'CustomerController@update');
 Route::post('/customer/request-update-otp', 'CustomerController@requestUpdateOtp');

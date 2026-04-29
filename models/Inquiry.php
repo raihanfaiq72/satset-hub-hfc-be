@@ -22,6 +22,7 @@ class Inquiry extends Model
         'payment_method',
         'tracking_token',
         'office_id',
+        'voucher_type',
         'voucher_code',
         'voucher_discount_amount',
     ];

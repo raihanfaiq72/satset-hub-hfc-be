@@ -162,4 +162,15 @@ class CustomerController extends BaseController {
             return $this->serverError('Failed to verify OTP: ' . $e->getMessage());
         }
     }
+
+    public function getAll() {
+        $this->auth->authenticate();
+        
+        try {
+            $customers = Customer::all();
+            return $this->success($customers);
+        } catch (Exception $e) {
+            return $this->serverError('Failed to fetch customers: ' . $e->getMessage());
+        }
+    }
 }

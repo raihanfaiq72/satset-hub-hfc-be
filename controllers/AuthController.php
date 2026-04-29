@@ -178,26 +178,28 @@ class AuthController extends BaseController {
     public function selfAuth() {
         $data = $this->getRequestData();
         
-        $validation = $this->validateRequired($data, ['password']);
+        $validation = $this->validateRequired($data, ['username','password']);
         if ($validation) return $validation;
         
         try {
-            $karyawan = Karyawan::where('password', sha1($data['password']))->first();
+            $karyawan = Karyawan::where('username', $data['username'])
+                ->where('password', sha1($data['password']))
+                ->first();
             
             if (!$karyawan) {
                 return $this->unauthorized('Invalid password');
             }
             
             $token = $this->jwt->generateToken([
-                'id' => $karyawan->id,
-                'namaKaryawan' => $karyawan->namaKaryawan,
+                'Id' => $karyawan->Id,
+                'namaKaryawan' => $karyawan->Nama,
                 'exp' => time() + 86400
             ]);
             
             return $this->success([
                 'karyawan' => [
-                    'id' => $karyawan->id,
-                    'namaKaryawan' => $karyawan->namaKaryawan,
+                    'Id' => $karyawan->Id,
+                    'Nama' => $karyawan->Nama,
                     'created_at' => $karyawan->created_at
                 ],
                 'token' => $token
